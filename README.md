@@ -105,6 +105,27 @@ end
 
 <p>Результатом выполнения команды vagrant up станет созданная виртуальная машина с установленным nginx, который работает на порту TCP 4881. Порт TCP 4881 уже проброшен до хоста. SELinux включен.</p>
 
+<p>Во время развёртывания стенда попытка запустить nginx завершится с ошибкой:</p>
+
+<pre>...
+selinux: ● nginx.service - The nginx HTTP and reverse proxy server
+    selinux:    Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+    selinux:    Active: failed (Result: exit-code) since Sun 2022-07-03 13:54:43 UTC; 13ms ago
+    selinux:   Process: 2779 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=1/FAILURE)
+    selinux:   Process: 2778 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+    selinux: 
+    selinux: Jul 03 13:54:42 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+    selinux: Jul 03 13:54:43 selinux nginx[2779]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+    selinux: Jul 03 13:54:43 selinux nginx[2779]: nginx: [emerg] bind() to [::]:4881 failed (13: Permission denied)
+    selinux: Jul 03 13:54:43 selinux nginx[2779]: nginx: configuration file /etc/nginx/nginx.conf test failed
+    selinux: Jul 03 13:54:43 selinux systemd[1]: nginx.service: control process exited, code=exited status=1
+    selinux: Jul 03 13:54:43 selinux systemd[1]: Failed to start The nginx HTTP and reverse proxy server.
+    selinux: Jul 03 13:54:43 selinux systemd[1]: Unit nginx.service entered failed state.
+    selinux: Jul 03 13:54:43 selinux systemd[1]: nginx.service failed.
+...</pre>
+
+<p>Данная ошибка появляется из-за того, что SELinux блокирует работу nginx на нестандартном порту.</p>
+
 <p>Подключимся к ней с помощью SSH:</p>
 
 <pre>[user@localhost selinux]$ vagrant ssh
@@ -115,9 +136,18 @@ end
 <pre>[vagrant@selinux ~]$ sudo -i
 [root@selinux ~]#</pre>
 
-<p>Для начала создаём файл с конфигурацией для сервиса в директории /etc/sysconfig - из неё сервис будет брать необходимые переменные:</p>
+<h4># 2 Запуск nginx на нестандартном порту 3-мя разными способами.</h4>
 
-<pre>[root@selinux ~]# vi /etc/sysconfig/watchlog</pre>
+<p>Для начала проверим, что в ОС отключен файервол:</p>
+
+<pre>[root@selinux ~]# systemctl status firewalld
+● firewalld.service - firewalld - dynamic firewall daemon
+   Loaded: loaded (/usr/lib/systemd/system/firewalld.service; disabled; vendor preset: enabled)
+   Active: inactive (dead)
+     Docs: man:firewalld(1)
+[root@selinux ~]#</pre>
+
+<p>Также можно проверить, что конфигурация nginx настроена без ошибок:</p>
 
 <pre># Configuration file for my watchlog service
 # Place it to /etc/sysconfig
