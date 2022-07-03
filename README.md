@@ -679,5 +679,59 @@ semodule -i nginx.pp
 
 [root@selinux ~]#</pre>
 
+<p>Audit2allow сформировал модуль и сообщил нам команду, с помощью которой можно применить данный модуль:</p>
+
+<pre>[root@selinux ~]# semodule -i nginx.pp
+[root@selinux ~]#</pre>
+
+<p>Попробуем снова запустить nginx:</p>
+
+<pre>[root@selinux ~]# systemctl start nginx
+[root@selinux ~]#</pre>
+
+<p>Смотрим статус запущенной службы nginx:</p>
+
+<pre>[root@selinux ~]# systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+   Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+   Active: active (running) since Sun 2022-07-03 17:19:42 UTC; 1min 12s ago
+  Process: 21869 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+  Process: 21866 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+  Process: 21865 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+ Main PID: 21871 (nginx)
+   CGroup: /system.slice/nginx.service
+           ├─21871 nginx: master process /usr/sbin/nginx
+           └─21873 nginx: worker process
+
+Jul 03 17:19:42 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Jul 03 17:19:42 selinux nginx[21866]: nginx: the configuration file /etc/nginx/ngi...ok
+Jul 03 17:19:42 selinux nginx[21866]: nginx: configuration file /etc/nginx/nginx.c...ul
+Jul 03 17:19:42 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
+Hint: Some lines were ellipsized, use -l to show in full.
+[root@selinux ~]#</pre>
+
+<p>Как видим, после добавления модуля nginx запустился без ошибок. При использовании модуля изменения сохранятся после перезагрузки.</p>
+
+<p>Просмотр всех установленных модулей: semodule -l, так как список будет внушительным, поэтому сделаем отбор по nginx:</p>
+
+<pre>[root@selinux ~]# semodule -l | grep nginx
+nginx	1.0
+[root@selinux ~]#</pre>
+
+<p>Для удаления модуля воспользуемся командой:</p>
+
+<pre>[root@selinux ~]# semodule -r nginx
+libsemanage.semanage_direct_remove_key: Removing last nginx module (no other nginx module exists at another priority).
+[root@selinux ~]#</pre>
+
+<p>Снова преверим наличие nginx в списке установленных модулей:</p>
+
+<pre>[root@selinux ~]# semodule -l | grep nginx
+[root@selinux ~]#</pre>
+
+<p>Как видим, nginx отсутствует в списке установленных модулей.</p>
+
+
+
 
 
