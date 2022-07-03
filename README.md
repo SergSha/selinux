@@ -38,7 +38,7 @@
   <li>для задания 2 обоснованно(!) выбран один из способов решения.</li>
 </ul>
 
-<h4># 1. Создаём виртуальную машину.</h4>
+<h4>Создаём виртуальную машину.</h4>
 
 <p>В домашней директории создадим директорию selinux, в которой будут храниться настройки виртуальной машины:</p>
 
@@ -138,7 +138,7 @@ selinux: ● nginx.service - The nginx HTTP and reverse proxy server
 <pre>[vagrant@selinux ~]$ sudo -i
 [root@selinux ~]#</pre>
 
-<h4># 2 Запуск nginx на нестандартном порту 3-мя разными способами.</h4>
+<h4># 1 Запуск nginx на нестандартном порту 3-мя разными способами.</h4>
 
 <p>Для начала проверим, что в ОС отключен файервол:</p>
 
@@ -164,7 +164,7 @@ Enforcing
 
 <p>Как видим, у нас режим Enforcing, а это означает, что SELinux будет блокировать запрещенную активность.</p>
 
-<h4>Разрешим в SELinux работу nginx на порту TCP 4881 c помощью переключателей setsebool</h4>
+<h4>Способ 1. Разрешим в SELinux работу nginx на порту TCP 4881 c помощью переключателей setsebool</h4>
 
 <p>Ищем в логах (/var/log/audit/audit.log) информацию о блокировании порта:</p>
 
@@ -402,7 +402,7 @@ nis_enabled --> on
 Job for nginx.service failed because the control process exited with error code. See "systemctl status nginx.service" and "journalctl -xe" for details.
 [root@selinux ~]#</pre>
 
-<h4>Разрешим в SELinux работу nginx на порту TCP 4881 c помощью добавления нестандартного порта в имеющийся тип</h4>
+<h4>Способ 2. Разрешим в SELinux работу nginx на порту TCP 4881 c помощью добавления нестандартного порта в имеющийся тип</h4>
 
 <p>Поиск имеющегося типа для http трафика:</p>
 
@@ -650,7 +650,7 @@ Jul 03 16:03:00 selinux systemd[1]: nginx.service failed.
 Hint: Some lines were ellipsized, use -l to show in full.
 [root@selinux ~]#</pre>
 
-<h4>Разрешим в SELinux работу nginx на порту TCP 4881 c помощью формирования и установки модуля SELinux</h4>
+<h4>Способ 3. Разрешим в SELinux работу nginx на порту TCP 4881 c помощью формирования и установки модуля SELinux</h4>
 
 <p>Попробуем снова запустить nginx:</p>
 
@@ -731,7 +731,7 @@ libsemanage.semanage_direct_remove_key: Removing last nginx module (no other ngi
 
 <p>Как видим, nginx отсутствует в списке установленных модулей.</p>
 
-<h4># 3. Обеспечение работоспособности приложения при включенном SELinux</h4>
+<h4># 2. Обеспечение работоспособности приложения при включенном SELinux</h4>
 
 <p>Для того, чтобы развернуть стенд потребуется хост, с установленным git и ansible.</p>
 
