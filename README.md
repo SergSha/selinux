@@ -609,8 +609,75 @@ Hint: Some lines were ellipsized, use -l to show in full.
 </html>
 [root@selinux ~]#</pre>
 
+<p>Удалим нестандартный порт из имеющегося типа можно с помощью команды:</p>
 
+<pre>[root@selinux ~]# semanage port -d -t http_port_t -p tcp 4881
+[root@selinux ~]#</pre>
 
+<p>Проверяем, присутствует ли порт 4881 в списке http_port_t:</p>
+
+<pre>[root@selinux ~]# semanage port -l | grep http_port_t
+http_port_t                    tcp      80, 81, 443, 488, 8008, 8009, 8443, 9000
+pegasus_http_port_t            tcp      5988
+[root@selinux ~]#</pre>
+
+<p>Пробуем перезапустить nginx:</p>
+
+<pre>[root@selinux ~]# systemctl restart nginx
+Job for nginx.service failed because the control process exited with error code. See "systemctl status nginx.service" and "journalctl -xe" for details.
+[root@selinux ~]#</pre>
+
+<p>Смотрим статус работы nginx:</p>
+
+<pre>[root@selinux ~]# systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+   Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+   Active: failed (Result: exit-code) since Sun 2022-07-03 16:03:00 UTC; 10min ago
+  Process: 21770 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+  Process: 21805 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=1/FAILURE)
+  Process: 21804 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+ Main PID: 21772 (code=exited, status=0/SUCCESS)
+
+Jul 03 16:03:00 selinux systemd[1]: Stopped The nginx HTTP and reverse proxy server.
+Jul 03 16:03:00 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Jul 03 16:03:00 selinux nginx[21805]: nginx: the configuration file /etc/nginx/ngi...ok
+Jul 03 16:03:00 selinux nginx[21805]: nginx: [emerg] bind() to 0.0.0.0:4881 failed...d)
+Jul 03 16:03:00 selinux nginx[21805]: nginx: configuration file /etc/nginx/nginx.c...ed
+Jul 03 16:03:00 selinux systemd[1]: nginx.service: control process exited, code=e...s=1
+Jul 03 16:03:00 selinux systemd[1]: Failed to start The nginx HTTP and reverse pr...er.
+Jul 03 16:03:00 selinux systemd[1]: Unit nginx.service entered failed state.
+Jul 03 16:03:00 selinux systemd[1]: nginx.service failed.
+Hint: Some lines were ellipsized, use -l to show in full.
+[root@selinux ~]#</pre>
+
+<h4>Разрешим в SELinux работу nginx на порту TCP 4881 c помощью формирования и установки модуля SELinux</h4>
+
+<p>Попробуем снова запустить nginx:</p>
+
+<pre>[root@selinux ~]# systemctl start nginx
+Job for nginx.service failed because the control process exited with error code. See "systemctl status nginx.service" and "journalctl -xe" for details.
+[root@selinux ~]#</pre>
+
+<p>Nginx не запускается, так как SELinux продолжает его блокировать. Посмотрим логи SELinux, которые относятся к nginx:</p>
+
+<pre>[root@selinux ~]# grep nginx /var/log/audit/audit.log
+...
+type=SYSCALL msg=audit(1656864180.643:895): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=557c34f92858 a2=10 a3=7ffc33ea7930 items=0 ppid=1 pid=21805 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="nginx" exe="/usr/sbin/nginx" subj=system_u:system_r:httpd_t:s0 key=(null)
+type=SERVICE_START msg=audit(1656864180.643:896): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=failed'
+type=AVC msg=audit(1656865088.306:897): avc:  denied  { name_bind } for  pid=21822 comm="nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+type=SYSCALL msg=audit(1656865088.306:897): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=5590f606b858 a2=10 a3=7ffe850b7890 items=0 ppid=1 pid=21822 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="nginx" exe="/usr/sbin/nginx" subj=system_u:system_r:httpd_t:s0 key=(null)
+type=SERVICE_START msg=audit(1656865088.306:898): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=failed'
+[root@selinux ~]#</pre>
+
+<p>Воспользуемся утилитой audit2allow для того, чтобы на основе логов SELinux сделать модуль, разрешающий работу nginx на нестандартном порту:</p>
+
+<pre>[root@selinux ~]# grep nginx /var/log/audit/audit.log | audit2allow -M nginx
+******************** IMPORTANT ***********************
+To make this policy package active, execute:
+
+semodule -i nginx.pp
+
+[root@selinux ~]#</pre>
 
 
 
