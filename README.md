@@ -83,6 +83,8 @@ Vagrant.configure("2") do |config|
         yum install -y epel-release
         #install nginx
         yum install -y nginx
+        #install policycoreutils-python
+        yum install -y policycoreutils-python
         #change nginx port
         sed -ie 's/:80/:4881/g' /etc/nginx/nginx.conf
         sed -i 's/listen  80;/listen  4881;/' /etc/nginx/nginx.conf
@@ -149,14 +151,55 @@ selinux: ● nginx.service - The nginx HTTP and reverse proxy server
 
 <p>Также можно проверить, что конфигурация nginx настроена без ошибок:</p>
 
-<pre># Configuration file for my watchlog service
-# Place it to /etc/sysconfig
+<pre>[root@selinux ~]# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+[root@selinux ~]#</pre>
 
-# File and word in that file that we will be monit
-WORD="ALERT"
-LOG=/var/log/watchlog.log</pre>
+<p>Далее проверим режим работы SELinux:</p>
 
-<p>Затем создаем /var/log/watchlog.log и пишем туда строки на своё усмотрение,
-плюс ключевое слово 'ALERT'</p>
+<pre>[root@selinux ~]# getenforce
+Enforcing
+[root@selinux ~]#</pre>
 
-<pre>[root@selinux ~]# vi /var/log/watchlog.log</pre>
+<p>Как видим, у нас режим Enforcing, а это означает, что SELinux будет блокировать запрещенную активность.</p>
+
+<h4>Разрешим в SELinux работу nginx на порту TCP 4881 c помощью переключателей setsebool</h4>
+
+<p>Ищем в логах (/var/log/audit/audit.log) информацию о блокировании порта:</p>
+
+<pre>[root@selinux ~]# less /var/log/audit/audit.log</pre>
+
+<pre>...
+type=AVC msg=audit(1656856482.995:803): avc:  denied  { name_bind } for  pid=2779 comm=
+"nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unres
+erved_port_t:s0 tclass=tcp_socket permissive=0
+type=SYSCALL msg=audit(1656856482.995:803): arch=c000003e syscall=49 success=no exit=-1
+3 a0=7 a1=558a2b7d08a8 a2=1c a3=7ffda9700174 items=0 ppid=1 pid=2779 auid=4294967295 ui
+d=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="n
+ginx" exe="/usr/sbin/nginx" subj=system_u:system_r:httpd_t:s0 key=(null)
+type=PROCTITLE msg=audit(1656856482.995:803): proctitle=2F7573722F7362696E2F6E67696E780
+02D74
+type=SERVICE_START msg=audit(1656856482.995:804): pid=1 uid=0 auid=4294967295 ses=42949
+67295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/sys
+temd/systemd" hostname=? addr=? terminal=? res=failed'
+...</pre>
+
+<p>Копируем время "1656856482.995:803", в которое был записан этот лог, и с помощью утилиты audit2why смотрим информации о запрете:</p>
+
+<pre>[root@selinux ~]# grep 1656856482.995:803 /var/log/audit/audit.log | audit2why
+type=AVC msg=audit(1656856482.995:803): avc:  denied  { name_bind } for  pid=2779 comm="nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+
+	Was caused by:
+	The boolean nis_enabled was set incorrectly. 
+	Description:
+	Allow nis to enabled
+
+	Allow access by executing:
+	# setsebool -P nis_enabled 1
+[root@selinux ~]#</pre>
+
+
+
+
+
