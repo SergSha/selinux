@@ -38,119 +38,86 @@
   <li>для задания 2 обоснованно(!) выбран один из способов решения.</li>
 </ul>
 
-<h4># 1. Написать service, который будет раз в 30 секунд мониторить лог на предмет наличия ключевого слова (файл лога и ключевое слово должны задаваться в /etc/sysconfig).</h4>
+<h4># 1. Создаём виртуальную машину.</h4>
 
-<p>В домашней директории создадим директорию systemd, в которой будут храниться настройки виртуальной машины:</p>
+<p>В домашней директории создадим директорию selinux, в которой будут храниться настройки виртуальной машины:</p>
 
-<pre>[user@localhost otus]$ mkdir ./systemd
+<pre>[user@localhost otus]$ mkdir ./selinux
 [user@localhost otus]$</pre>
 
-<p>Перейдём в директорию systemd:</p>
+<p>Перейдём в директорию selinux:</p>
 
-<pre>[user@localhost otus]$ cd ./systemd/
-[user@localhost systemd]$</pre>
+<pre>[user@localhost otus]$ cd ./selinux/
+[user@localhost selinux]$</pre>
 
 <p>Создадим файл Vagrantfile:</p>
 
-<pre>[user@localhost systemd]$ vi ./Vagrantfile</pre>
+<pre>[user@localhost selinux]$ vi ./Vagrantfile</pre>
 
 <p>Заполним следующим содержимым:</p>
 
 <pre># -*- mode: ruby -*-
 # vim: set ft=ruby :
-home = ENV['HOME']
-ENV["LC_ALL"] = "en_US.UTF-8"
 
 MACHINES = {
-  :systemd => {
-        :box_name => "centos/7",
-        :box_version => "1804.02",
-        :ip_addr => '192.168.56.101',
-    :disks => {
-        :sata1 => {
-            :dfile => home + '/VirtualBox VMs/sata1.vdi',
-            :size => 10240,
-            :port => 1
-        },
-        :sata2 => {
-            :dfile => home + '/VirtualBox VMs/sata2.vdi',
-            :size => 2048, # Megabytes
-            :port => 2
-        },
-        :sata3 => {
-            :dfile => home + '/VirtualBox VMs/sata3.vdi',
-            :size => 1024, # Megabytes
-            :port => 3
-        },
-        :sata4 => {
-            :dfile => home + '/VirtualBox VMs/sata4.vdi',
-            :size => 1024,
-            :port => 4
-        }
-    }
+  :selinux => {
+    :box_name => "centos/7",
+    :box_version => "2004.01",
+    #:provision => "test.sh",
   },
 }
 
 Vagrant.configure("2") do |config|
-
-    config.vm.box_version = "1804.02"
-    MACHINES.each do |boxname, boxconfig|
-  
-        config.vm.define boxname do |box|
-  
-            box.vm.box = boxconfig[:box_name]
-            box.vm.host_name = boxname.to_s
-  
-            #box.vm.network "forwarded_port", guest: 3260, host: 3260+offset
-  
-            box.vm.network "private_network", ip: boxconfig[:ip_addr]
-  
-            box.vm.provider :virtualbox do |vb|
-                    vb.customize ["modifyvm", :id, "--memory", "256"]
-                    needsController = false
-            boxconfig[:disks].each do |dname, dconf|
-                unless File.exist?(dconf[:dfile])
-                  vb.customize ['createhd', '--filename', dconf[:dfile], '--variant', 'Fixed', '--size', dconf[:size]]
-                                  needsController =  true
-                            end
-  
-            end
-                    if needsController == true
-                       vb.customize ["storagectl", :id, "--name", "SATA", "--add", "sata" ]
-                       boxconfig[:disks].each do |dname, dconf|
-                           vb.customize ['storageattach', :id,  '--storagectl', 'SATA', '--port', dconf[:port], '--device', 0, '--type', 'hdd', '--medium', dconf[:dfile]]
-                       end
-                    end
-            end
-  
-        box.vm.provision "shell", inline: <<-SHELL
-            mkdir -p ~root/.ssh
-            cp ~vagrant/.ssh/auth* ~root/.ssh
-            yum install -y mdadm smartmontools hdparm gdisk
-          SHELL
-  
-        end
+  MACHINES.each do |boxname, boxconfig|
+    config.vm.define boxname do |box|
+      box.vm.box = boxconfig[:box_name]
+      box.vm.box_version = boxconfig[:box_version]
+      box.vm.host_name = "selinux"
+      box.vm.network "forwarded_port", guest: 4881, host: 4881
+      box.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--memory", "1024"]
+        needsController = false
+      end
+      box.vm.provision "shell", inline: <<-SHELL
+        #install epel-release
+        yum install -y epel-release
+        #install nginx
+        yum install -y nginx
+        #change nginx port
+        sed -ie 's/:80/:4881/g' /etc/nginx/nginx.conf
+        sed -i 's/listen  80;/listen  4881;/' /etc/nginx/nginx.conf
+        #disable SELinux
+        #setenforce 0
+        #start nginx
+        systemctl start nginx
+        systemctl status nginx
+        #check nginx port
+        ss -tlpn | grep 4881
+      SHELL
     end
   end
+end
 </pre>
 
 <p>Запустим систему:</p>
 
-<pre>[user@localhost systemd]$ vagrant up</pre>
+<pre>[user@localhost selinux]$ vagrant up</pre>
 
-<p>и войдём в неё:</p>
+<p>Результатом выполнения команды vagrant up станет созданная виртуальная машина с установленным nginx, который работает на порту TCP 4881. Порт TCP 4881 уже проброшен до хоста. SELinux включен.</p>
 
-<pre>[user@localhost systemd]$ vagrant ssh
-[vagrant@systemd ~]$</pre>
+<p>Подключимся к ней с помощью SSH:</p>
+
+<pre>[user@localhost selinux]$ vagrant ssh
+[vagrant@selinux ~]$</pre>
 
 <p>Заходим под правами root:</p>
 
-<pre>[vagrant@systemd ~]$ sudo -i
-[root@systemd ~]#</pre>
+<pre>[vagrant@selinux ~]$ sudo -i
+[root@selinux ~]#</pre>
 
 <p>Для начала создаём файл с конфигурацией для сервиса в директории /etc/sysconfig - из неё сервис будет брать необходимые переменные:</p>
 
-<pre>[root@systemd ~]# vi /etc/sysconfig/watchlog</pre>
+<pre>[root@selinux ~]# vi /etc/sysconfig/watchlog</pre>
 
 <pre># Configuration file for my watchlog service
 # Place it to /etc/sysconfig
@@ -162,4 +129,4 @@ LOG=/var/log/watchlog.log</pre>
 <p>Затем создаем /var/log/watchlog.log и пишем туда строки на своё усмотрение,
 плюс ключевое слово 'ALERT'</p>
 
-<pre>[root@systemd ~]# vi /var/log/watchlog.log</pre>
+<pre>[root@selinux ~]# vi /var/log/watchlog.log</pre>
