@@ -731,6 +731,17 @@ libsemanage.semanage_direct_remove_key: Removing last nginx module (no other ngi
 
 <p>Как видим, nginx отсутствует в списке установленных модулей.</p>
 
+<h4># 2. Обеспечение работоспособности приложения при включенном SELinux</h4>
+
+<p>Для того, чтобы развернуть стенд потребуется хост, с установленным git и ansible.</p>
+
+<p>Инструкция по установке Ansible -<br />
+https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html<br />
+Инструкция по установке Git -<br />
+https://git-scm.com/book/ru/v2/%D0%92%D0%B2%D0%B5%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-Git</p>
+
+<p>Выполним клонирование репозитория:</p>
+
 
 
 
