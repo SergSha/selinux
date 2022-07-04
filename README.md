@@ -107,7 +107,7 @@ end
 
 <p>Результатом выполнения команды vagrant up станет созданная виртуальная машина с установленным nginx, который работает на порту TCP 4881. Порт TCP 4881 уже проброшен до хоста. SELinux включен.</p>
 
-<p>Во время развёртывания стенда попытка запустить nginx завершится с ошибкой:</p>
+<p>Во время развёртывания стенда попытка запустить nginx завершилась с ошибкой:</p>
 
 <pre>...
 selinux: ● nginx.service - The nginx HTTP and reverse proxy server
@@ -185,7 +185,7 @@ type=SERVICE_START msg=audit(1656856482.995:804): pid=1 uid=0 auid=4294967295 se
 temd/systemd" hostname=? addr=? terminal=? res=failed'
 ...</pre>
 
-<p>Копируем время "1656856482.995:803", в которое был записан этот лог, и с помощью утилиты audit2why смотрим информации о запрете:</p>
+<p>Копируем время "1656856482.995:803", в которое был записан этот лог, и с помощью утилиты audit2why смотрим информацию о запрете:</p>
 
 <pre>[root@selinux ~]# grep 1656856482.995:803 /var/log/audit/audit.log | audit2why
 type=AVC msg=audit(1656856482.995:803): avc:  denied  { name_bind } for  pid=2779 comm="nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
@@ -391,6 +391,8 @@ Hint: Some lines were ellipsized, use -l to show in full.
 nis_enabled --> on
 [root@selinux ~]#</pre>
 
+<p>В результате добились, что nginx работает на нестандартном порту 4881 с включенным selinux с помощью переключателя setsebool.</p>
+
 <p>Вернём запрет работы nginx на порту 4881 обратно. Для этого отключим nis_enabled:</p>
 
 <pre>[root@selinux ~]# setsebool -P nis_enabled off
@@ -428,6 +430,8 @@ pegasus_https_port_t           tcp      5989
 http_port_t                    tcp      4881, 80, 81, 443, 488, 8008, 8009, 8443, 9000
 pegasus_http_port_t            tcp      5988
 [root@selinux ~]#</pre>
+
+<p>Порт 4881 добавлен в тип http_port_t</p>
 
 <p>Теперь перезапустим службу nginx:</p>
 
@@ -609,6 +613,8 @@ Hint: Some lines were ellipsized, use -l to show in full.
 </html>
 [root@selinux ~]#</pre>
 
+<p>В результате добились, что nginx работает на нестандартном порту 4881 с включенным selinux c помощью добавления нестандартного порта в имеющийся тип.</p>
+
 <p>Удалим нестандартный порт из имеющегося типа можно с помощью команды:</p>
 
 <pre>[root@selinux ~]# semanage port -d -t http_port_t -p tcp 4881
@@ -717,6 +723,8 @@ Hint: Some lines were ellipsized, use -l to show in full.
 <pre>[root@selinux ~]# semodule -l | grep nginx
 nginx	1.0
 [root@selinux ~]#</pre>
+
+<p>В результате добились, что nginx работает на нестандартном порту 4881 с включенным selinux за счет формирования и установки модуля SELinux.</p>
 
 <p>Для удаления модуля воспользуемся командой:</p>
 
